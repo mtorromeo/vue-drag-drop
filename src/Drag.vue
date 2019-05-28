@@ -1,11 +1,11 @@
 <template>
 	<component :is="tag"
 		:draggable="draggable"
-		@drag="emitEvent('drag', $event)"
-		@dragstart="emitEvent('dragstart', $event)"
-		@dragenter="emitEvent('dragenter', $event)"
-		@dragleave="emitEvent('dragleave', $event)"
-		@dragend="emitEvent('dragend', $event)"
+		@drag="reEmit"
+		@dragstart="dragStart"
+		@dragenter="dragEnter"
+		@dragleave="reEmit"
+		@dragend="dragEnd"
 	>
 		<slot :transfer-data="scopedData"></slot>
 		<div v-if="hideImageHtml" :style="hideImageStyle">
@@ -49,70 +49,91 @@
 				default: 'div',
 			},
 		},
+
 		data() {
-			return { dragging: false };
+			return {
+				dragging: false,
+			};
 		},
+
 		computed: {
 			scopedData() {
 				return this.dragging && this.transferData;
 			},
-			hideImageStyle: () => ({ position: 'fixed', top: '-1000px' }),
+			hideImageStyle() {
+				return {
+					position: 'fixed',
+					top: '-1000px',
+				};
+			},
 		},
+
+		destroyed() {
+			if (transferDataStore.drag === this) {
+				this.resetStore();
+			}
+		},
+
 		methods: {
-			emitEvent(name, nativeEvent) {
-				const transfer = nativeEvent.dataTransfer;
+			dragEnter(e) {
+				if (this.dropEffect) {
+					e.dataTransfer.dropEffect = this.dropEffect;
+				}
+				this.reEmit(e);
+			},
 
-				// Set drop effect on dragenter and dragover
-				if (['dragenter', 'dragover'].includes(name)) {
-					if (this.dropEffect) {
-						transfer.dropEffect = this.dropEffect;
+			dragStart(e) {
+				// Set the allowed effects
+				if (this.effectAllowed) {
+					e.dataTransfer.effectAllowed = this.effectAllowed;
+				}
+
+				// Set the drag image
+				if (this.image || this.$slots.image) {
+					let image;
+					if (this.image) {
+						image = new Image();
+						image.src = this.image;
+					} else if (this.$slots.image) {
+						image = this.$slots.image[0].elm;
+					}
+					if (e.dataTransfer.setDragImage) {
+						e.dataTransfer.setDragImage(image, this.imageXOffset, this.imageYOffset);
 					}
 				}
 
-				// A number of things need to happen on drag start
-				if (name === 'dragstart') {
-					// Set the allowed effects
-					if (this.effectAllowed) {
-						transfer.effectAllowed = this.effectAllowed;
-					}
+				transferDataStore.drag = this;
 
-					// Set the drag image
-					if (this.image || this.$slots.image) {
-						let image;
-						if (this.image) {
-							image = new Image();
-							image.src = this.image;
-						} else if (this.$slots.image) {
-							image = this.$slots.image[0].elm;
-						}
-						if (transfer.setDragImage) {
-							transfer.setDragImage(image, this.imageXOffset, this.imageYOffset);
-						}
-					}
-
-					// Set the transfer data
-					if (this.transferData !== undefined) {
-						transferDataStore.data = this.transferData;
-						// Set a dummy string for the real transfer data. Not actually used
-						// for anything, but necesssary for browser compatibility.
-						//
-						// TODO: Maybe this should be the actual data serialized. But since
-						// it's not actually used for anything it seems like a waste of CPU.
-						nativeEvent.dataTransfer.setData('text', '');
-					}
-
-					// Indicate that we're dragging.
-					this.dragging = true;
+				// Set the transfer data
+				if (this.transferData !== null) {
+					transferDataStore.data = this.transferData;
+					// Set a dummy string for the real transfer data. Not actually used
+					// for anything, but necesssary for browser compatibility.
+					//
+					// TODO: Maybe this should be the actual data serialized. But since
+					// it's not actually used for anything it seems like a waste of CPU.
+					e.dataTransfer.setData('text', '');
 				}
 
-				// At last, emit the event.
-				this.$emit(name, this.transferData, nativeEvent);
+				// Indicate that we're dragging.
+				this.dragging = true;
 
-				// Clean up stored data on drag end after emitting.
-				if (name === 'dragend') {
-					transferDataStore.data = undefined;
-					this.dragging = false;
-				}
+				this.reEmit(e);
+			},
+
+			dragEnd(e) {
+				this.reEmit(e);
+				this.resetStore();
+				this.dragging = false;
+			},
+
+			reEmit(e) {
+				this.$emit(e.type, this.transferData, this, e);
+			},
+
+			resetStore() {
+				transferDataStore.drag = null;
+				transferDataStore.data = null;
 			},
 		},
 	};

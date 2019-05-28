@@ -1,1 +1,4 @@
-export default { data: undefined };
+export default {
+	data: null,
+	drag: null,
+};

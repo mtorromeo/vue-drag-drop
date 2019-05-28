@@ -1,9 +1,11 @@
 <template>
-	<component :is="tag"
-		@dragenter="emitEvent('dragenter', $event)"
-		@dragleave="emitEvent('dragleave', $event)"
-		@dragover.prevent="emitEvent('dragover', $event)"
-		@drop.prevent="emitEvent('drop', $event)"
+	<component
+		:is="tag"
+		:class="{[hoverClass]: isDraggingOver}"
+		@dragenter="dragEnter"
+		@dragleave="dragLeave"
+		@dragover.prevent="reEmit"
+		@drop.prevent="reEmit"
 	>
 		<slot :transfer-data="scopedData"></slot>
 	</component>
@@ -15,47 +17,69 @@
 	const insideElements = new Set();
 
 	export default {
-		data() {
-			return { transferData: undefined, isDraggingOver: false };
-		},
 		props: {
-			tag: { type: String, default: 'div' },
+			tag: {
+				type: String,
+				default: 'div',
+			},
+			hoverClass: {
+				type: String,
+				default: null,
+			},
 		},
+
+		data() {
+			return {
+				transferData: null,
+				isDraggingOver: false,
+			};
+		},
+
 		computed: {
 			scopedData() {
 				return this.isDraggingOver && this.transferData;
 			},
 		},
+
 		methods: {
-			emitEvent(name, nativeEvent) {
-				this.transferData = transferDataStore.data;
-				this.$emit(name, this.transferData, nativeEvent);
+			dragEnter(e) {
+				this.reEmit(e);
 
 				/**
 				 * After emitting the event, we need to determine if we're still
 				 * dragging inside this Drop. We keep a Set of all elements that we've
 				 * dragged into, then clear the data if that set is empty.
 				 */
-
-				// Add to the set on dragenter.
-				if (name === 'dragenter') {
-					if (insideElements.size || nativeEvent.target === this.$el) {
-						insideElements.add(nativeEvent.target);
+				this.alterInside(elements => {
+					elements.add(e.target);
+					if (transferDataStore.drag !== null) {
+						transferDataStore.drag.$once('dragend', () => {
+							this.alterInside(elements => elements.clear());
+						});
 					}
-				}
+				});
+			},
 
-				// Remove from the set on dragleave.
-				if (name === 'dragleave') {
-					insideElements.delete(nativeEvent.target);
-				}
+			dragLeave(e) {
+				this.reEmit(e);
+				this.alterInside(elements => elements.delete(e.target));
+			},
 
-				// A drop resets everything.
-				if (name === 'drop') {
-					insideElements.clear();
-				}
+			reEmit(e) {
+				this.transferData = transferDataStore.data;
+				this.$emit(e.type, this.transferData, this, e);
+			},
 
-				// Finally, since Vue can't react to Set changes, set a flag indicating drag status.
+			alterInside(f) {
+				f(insideElements);
 				this.isDraggingOver = Boolean(insideElements.size);
+			},
+		},
+
+		watch: {
+			isDraggingOver(over) {
+				// non-native event that is triggered only when we are entering/leaving the dom subtree
+				this.$emit(over ? 'enter' : 'leave', this.transferData, this);
 			},
 		},
 	};
