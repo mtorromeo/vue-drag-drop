@@ -1,11 +1,11 @@
 <template>
 	<component :is="tag"
 		:draggable="draggable"
-		@drag="emitEvent(events.drag, $event)"
-		@dragstart="emitEvent(events.dragstart, $event)"
-		@dragenter="emitEvent(events.dragenter, $event)"
-		@dragleave="emitEvent(events.dragleave, $event)"
-		@dragend="emitEvent(events.dragend, $event)"
+		@drag="emitEvent('drag', $event)"
+		@dragstart="emitEvent('dragstart', $event)"
+		@dragenter="emitEvent('dragenter', $event)"
+		@dragleave="emitEvent('dragleave', $event)"
+		@dragend="emitEvent('dragend', $event)"
 	>
 		<slot :transfer-data="scopedData"></slot>
 		<div v-if="hideImageHtml" :style="hideImageStyle">
@@ -17,25 +17,42 @@
 
 <script>
 	import transferDataStore from './transferDataStore';
-	import { dropEffects, effectsAllowed, events } from './constants';
 
 	export default {
 		props: {
-			draggable: { type: Boolean, default: true },
+			draggable: {
+				type: Boolean,
+				default: true,
+			},
 			transferData: {},
-			dropEffect: { validator: (value) => value in dropEffects },
-			effectAllowed: { validator: (value) => value in effectsAllowed },
+			dropEffect: {
+				validator: v => ['copy', 'move', 'link', 'none'].indexOf(v) >= 0,
+			},
+			effectAllowed: {
+				validator: v => ['none', 'copy', 'copyLink', 'copyMove', 'link', 'linkMove', 'move', 'all', 'uninitialized'].indexOf(v) >= 0,
+			},
 			image: String,
-			imageXOffset: { type: Number, default: 0 },
-			imageYOffset: { type: Number, default: 0 },
-			hideImageHtml: { type: Boolean, default: true },
-			tag: { type: String, default: 'div' },
+			imageXOffset: {
+				type: Number,
+				default: 0,
+			},
+			imageYOffset: {
+				type: Number,
+				default: 0,
+			},
+			hideImageHtml: {
+				type: Boolean,
+				default: true,
+			},
+			tag: {
+				type: String,
+				default: 'div',
+			},
 		},
 		data() {
 			return { dragging: false };
 		},
 		computed: {
-			events: () => events,
 			scopedData() {
 				return this.dragging && this.transferData;
 			},
@@ -46,14 +63,14 @@
 				const transfer = nativeEvent.dataTransfer;
 
 				// Set drop effect on dragenter and dragover
-				if ([events.dragenter, events.dragover].includes(name)) {
+				if (['dragenter', 'dragover'].includes(name)) {
 					if (this.dropEffect) {
 						transfer.dropEffect = this.dropEffect;
 					}
 				}
 
 				// A number of things need to happen on drag start
-				if (name === events.dragstart) {
+				if (name === 'dragstart') {
 					// Set the allowed effects
 					if (this.effectAllowed) {
 						transfer.effectAllowed = this.effectAllowed;
@@ -92,7 +109,7 @@
 				this.$emit(name, this.transferData, nativeEvent);
 
 				// Clean up stored data on drag end after emitting.
-				if (name === events.dragend) {
+				if (name === 'dragend') {
 					transferDataStore.data = undefined;
 					this.dragging = false;
 				}

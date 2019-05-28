@@ -1,9 +1,9 @@
 <template>
 	<component :is="tag"
-		@dragenter="emitEvent(events.dragenter, $event)"
-		@dragleave="emitEvent(events.dragleave, $event)"
-		@dragover.prevent="emitEvent(events.dragover, $event)"
-		@drop.prevent="emitEvent(events.drop, $event)"
+		@dragenter="emitEvent('dragenter', $event)"
+		@dragleave="emitEvent('dragleave', $event)"
+		@dragover.prevent="emitEvent('dragover', $event)"
+		@drop.prevent="emitEvent('drop', $event)"
 	>
 		<slot :transfer-data="scopedData"></slot>
 	</component>
@@ -11,7 +11,6 @@
 
 <script>
 	import transferDataStore from './transferDataStore';
-	import { events } from './constants';
 
 	const insideElements = new Set();
 
@@ -23,7 +22,6 @@
 			tag: { type: String, default: 'div' },
 		},
 		computed: {
-			events: () => events,
 			scopedData() {
 				return this.isDraggingOver && this.transferData;
 			},
@@ -40,19 +38,19 @@
 				 */
 
 				// Add to the set on dragenter.
-				if (name === events.dragenter) {
+				if (name === 'dragenter') {
 					if (insideElements.size || nativeEvent.target === this.$el) {
 						insideElements.add(nativeEvent.target);
 					}
 				}
 
 				// Remove from the set on dragleave.
-				if (name === events.dragleave) {
+				if (name === 'dragleave') {
 					insideElements.delete(nativeEvent.target);
 				}
 
 				// A drop resets everything.
-				if (name === events.drop) {
+				if (name === 'drop') {
 					insideElements.clear();
 				}
 
