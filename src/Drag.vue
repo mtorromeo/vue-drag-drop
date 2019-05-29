@@ -8,10 +8,12 @@
 		@dragend="dragEnd"
 	>
 		<slot :transfer-data="scopedData"></slot>
-		<div v-if="hideImageHtml" :style="hideImageStyle">
-			<slot name="image" :transfer-data="scopedData"></slot>
-		</div>
-		<slot v-else name="image" :transfer-data="scopedData"></slot>
+		<template v-if="$slots.image || $scopedSlots.image">
+			<div v-if="hideImageHtml" :style="hideImageStyle">
+				<slot name="image" :transfer-data="scopedData"></slot>
+			</div>
+			<slot v-else name="image" :transfer-data="scopedData"></slot>
+		</template>
 	</component>
 </template>
 
@@ -108,7 +110,7 @@
 				if (this.transferData !== null) {
 					transferDataStore.data = this.transferData;
 					// Set a dummy string for the real transfer data. Not actually used
-					// for anything, but necesssary for browser compatibility.
+					// for anything, but necessary for browser compatibility.
 					//
 					// TODO: Maybe this should be the actual data serialized. But since
 					// it's not actually used for anything it seems like a waste of CPU.
