@@ -6,6 +6,7 @@
 		@dragleave="dragLeave"
 		@dragover.prevent="reEmit"
 		@drop.prevent="reEmit"
+		v-on="$listeners"
 	>
 		<slot :transfer-data="scopedData"></slot>
 	</component>

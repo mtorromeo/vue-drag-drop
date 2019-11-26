@@ -6,6 +6,7 @@
 		@dragenter="dragEnter"
 		@dragleave="reEmit"
 		@dragend="dragEnd"
+		v-on="$listeners"
 	>
 		<slot :transfer-data="scopedData"></slot>
 		<template v-if="$slots.image || $scopedSlots.image">
